@@ -4,11 +4,12 @@
   <artifactId>sdk-jsch</artifactId>
   <name>sdk-jsch</name>
   <packaging>pom</packaging>
-  <version>x.y.z-SNAPSHOT</version>
+  <version>${revision}</version>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <jdk.compiler.version>11</jdk.compiler.version>
+    <revision>1.0.0.RELEASE</revision>
   </properties>
   <dependencies>
     <dependency>
