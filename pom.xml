@@ -9,7 +9,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     <jdk.compiler.version>11</jdk.compiler.version>
-    <revision>1.0.0.RELEASE</revision>
+    <revision>x.y.z-SNAPSHOT</revision>
   </properties>
   <dependencies>
     <dependency>
