@@ -13,14 +13,19 @@ public class SSHConst {
     public static final int DEFAULT_SSH_PORT = 22;
 
     /**
+     * 默认的ssh连接端口.
+     */
+    public static final int DEFAULT_SFTP_PORT = 21;
+
+    /**
      * 默认的ssh创建session时的连接超时毫秒数.
      */
-    public static final int DEFAULT_SESSION_TIMEOUT_MILLIS = 3000;
+    public static final int DEFAULT_SESSION_CONNECT_TIMEOUT_MILLIS = 5000;
 
     /**
      * 默认的ssh命令执行时连接超时毫秒数.
      */
-    public static final int DEFAULT_CHANNEL_CONNECT_TIMEOUT_MILLIS = 3000;
+    public static final int DEFAULT_CHANNEL_CONNECT_TIMEOUT_MILLIS = 5000;
 
     /**
      * 标准输出分隔符（用于分隔正常输出的文本内容）.

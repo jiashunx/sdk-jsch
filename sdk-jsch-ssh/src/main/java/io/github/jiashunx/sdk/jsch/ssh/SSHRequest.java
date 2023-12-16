@@ -26,7 +26,7 @@ public class SSHRequest {
     /**
      * ssh创建session时的连接超时毫秒数.
      */
-    private int sessionTimeoutMillis = SSHConst.DEFAULT_SESSION_TIMEOUT_MILLIS;
+    private int sessionTimeoutMillis = SSHConst.DEFAULT_SESSION_CONNECT_TIMEOUT_MILLIS;
     /**
      * ssh命令执行时连接超时毫秒数.
      */
