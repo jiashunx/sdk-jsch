@@ -53,14 +53,11 @@ public class ExecSession extends AbstractSession {
     }
 
     private synchronized ExecResponse execute(String... commands) {
-        long startMillis = System.currentTimeMillis();
-        long costMillis = 0L;
-        ExecResponse execResponse = new ExecResponse();
         String[] commandArr = commands;
         if (commandArr == null || commandArr.length == 0) {
             commandArr = new String[] { SSHConst.STRING_EMPTY };
         }
-        // 多命令处理，插入标记命令
+        // 多命令处理，插入标记命令，作为同一命令进行执行
         // 对ssh命令进行格式化, 统一进行命令分隔处理（主要针对多命令执行）
         StringBuilder commandBuilder = new StringBuilder();
         for (String c: commandArr) {
@@ -68,12 +65,18 @@ public class ExecSession extends AbstractSession {
                     .append(SSHConst.COMMAND_ECHO_STDOUT_LINE).append(SSHConst.STRING_SEMICOLON)
                     .append(SSHConst.COMMAND_ECHO_STDERR_LINE).append(SSHConst.STRING_SEMICOLON);
         }
-        String command = commandBuilder.toString();
+        return execute(commandBuilder.toString());
+    }
+
+    private synchronized ExecResponse execute(String command) {
         Server server = getServer();
+        ExecResponse execResponse = new ExecResponse();
         execResponse.setCommand(command);
         execResponse.setHost(server.getHost());
         Session session = null;
         ChannelExec channelExec = null;
+        long startMillis = System.currentTimeMillis();
+        long costMillis = 0L;
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
              ByteArrayOutputStream errStream = new ByteArrayOutputStream()) {
             // 获取session，自动重连

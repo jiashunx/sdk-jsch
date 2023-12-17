@@ -1,6 +1,7 @@
 package io.github.jiashunx.sdk.jsch.ssh2.resp;
 
 import io.github.jiashunx.sdk.jsch.ssh.SSHConst;
+import io.github.jiashunx.sdk.jsch.ssh2.exception.JschException;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -34,6 +35,11 @@ public class ExecResponse {
      * 异常输出日志.
      */
     private String errorContent;
+
+    /**
+     * 异常对象.
+     */
+    private JschException errorObj;
 
     /**
      * ssh命令是否执行成功.
@@ -122,12 +128,17 @@ public class ExecResponse {
     }
 
     public ExecResponse setErrorContent(Throwable throwable) {
+        this.errorObj = new JschException(throwable);
         StringWriter stringWriter = new StringWriter();
         try (PrintWriter printWriter = new PrintWriter(stringWriter)) {
             throwable.printStackTrace(printWriter);
             setErrorContent(stringWriter.toString());
         }
         return this;
+    }
+
+    public JschException getErrorObj() {
+        return errorObj;
     }
 
     public boolean isSuccess() {
