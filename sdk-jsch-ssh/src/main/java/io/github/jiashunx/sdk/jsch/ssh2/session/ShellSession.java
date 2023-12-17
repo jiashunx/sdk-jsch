@@ -92,6 +92,22 @@ public class ShellSession extends AbstractSession {
          * 额外命令输出
          */
         private static final String ADDITIONAL_COMMAND_OUTPUT = SSHConst.STDOUT_LINE_SEPARATOR;
+        /**
+         * 上次执行命令内容
+         */
+        private volatile String prevCommand;
+        /**
+         * 空命令返回结果（回车）
+         */
+        private volatile String emptyCmdOutput;
+        /**
+         * 默认命令行返回结果（空命令行前缀）
+         */
+        private volatile String defaultCmdOutput;
+        /**
+         * 替换后的空命令返回结果（回车）
+         */
+        private volatile String replacedCmdOutput;
         public ShellExecutor(InputStream inputStream, OutputStream outputStream) {
             this.inputStream = Objects.requireNonNull(inputStream);
             this.outputStream = Objects.requireNonNull(outputStream);
@@ -102,6 +118,14 @@ public class ShellSession extends AbstractSession {
                     readOnce();
                 }
             }, "shell-read-" + counter.incrementAndGet()).start();
+            write("pwd").read();
+            this.emptyCmdOutput = write("").read();
+            this.replacedCmdOutput = this.emptyCmdOutput;
+            this.defaultCmdOutput = this.emptyCmdOutput;
+            if (this.emptyCmdOutput.startsWith("\r\n\r\n")) {
+                this.replacedCmdOutput = this.emptyCmdOutput.substring(2);
+                this.defaultCmdOutput = this.emptyCmdOutput.substring(4);
+            }
             return this;
         }
         private ShellExecutor execute(Consumer<ShellExecutor> consumer) {
@@ -129,10 +153,14 @@ public class ShellSession extends AbstractSession {
         }
         public synchronized ShellExecutor write(String command) {
             StringBuilder commandBuilder = new StringBuilder();
+            if (command == null || command.trim().isEmpty()) {
+                command = "echo ''";
+            }
             commandBuilder.append(command.trim()).append(ADDITIONAL_COMMAND).append("\n");
             try {
                 outputStream.write(commandBuilder.toString().getBytes(StandardCharsets.UTF_8));
                 outputStream.flush();
+                prevCommand = commandBuilder.substring(0, commandBuilder.length() - 1);
                 countDownLatch = new CountDownLatch(1);
                 countDownLatch.await();
             } catch (Throwable throwable) {
@@ -140,6 +168,9 @@ public class ShellSession extends AbstractSession {
                 countDownLatch = null;
             }
             return this;
+        }
+        public String getDefaultCmdOutput() {
+            return this.defaultCmdOutput == null ? "" : this.defaultCmdOutput;
         }
         public synchronized String read() {
             return outputQueue.poll();
@@ -159,10 +190,24 @@ public class ShellSession extends AbstractSession {
                         }
                     }
                     String content = byteArrayOutputStream.toString(StandardCharsets.UTF_8);
-                    if (content.indexOf(ADDITIONAL_COMMAND) > 0) {
-                        content = content.replace(ADDITIONAL_COMMAND, "");
-                        if (content.indexOf(ADDITIONAL_COMMAND_OUTPUT) > 0) {
-                            content = content.replace(ADDITIONAL_COMMAND_OUTPUT, "");
+                    int prevIndex = content.indexOf(prevCommand);
+                    if (prevIndex >= 0) {
+                        content = content.substring(prevIndex + prevCommand.length());
+                        int indexA = content.indexOf(ADDITIONAL_COMMAND_OUTPUT);
+                        if (indexA >= 0) {
+                            int indexB = content.indexOf(ADDITIONAL_COMMAND_OUTPUT + "\r\n");
+                            if (indexB >= 0) {
+                                indexA = indexB;
+                            }
+                            content = content.substring(0, indexA) + content.substring(indexA + ADDITIONAL_COMMAND_OUTPUT.length());
+                            if (content.startsWith("\r\n")) {
+                                content = content.substring(2);
+                            }
+                            if (this.replacedCmdOutput != null) {
+                                if (content.endsWith(this.emptyCmdOutput)) {
+                                    content = content.replace(this.emptyCmdOutput, this.replacedCmdOutput);
+                                }
+                            }
                             outputQueue.offer(content);
                             byteArrayOutputStream.reset();
                             countDownLatch.countDown();
