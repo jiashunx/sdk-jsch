@@ -19,13 +19,13 @@ public class ShellSessionTest {
 
                 String command1 = "cat /proc/meminfo";
                 System.out.println(command1);
-                String content1 = executor.write(command1).read();
+                String content1 = executor.write(command1).read().getContent();
                 Assert.assertNotNull(content1);
                 System.out.print(content1);
 
                 String command2 = "du";
                 System.out.println(command2);
-                String content2 = executor.write(command2).read();
+                String content2 = executor.write(command2).read().getContent();
                 Assert.assertNotNull(content2);
                 System.out.println(content2);
             });
