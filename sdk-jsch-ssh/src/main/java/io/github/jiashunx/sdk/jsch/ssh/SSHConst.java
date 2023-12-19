@@ -28,6 +28,11 @@ public class SSHConst {
     public static final int DEFAULT_CHANNEL_CONNECT_TIMEOUT_MILLIS = 5000;
 
     /**
+     * 默认的session命令等待超时毫秒数.
+     */
+    public static final long DEFAULT_SESSION_WAIT_TIMEOUT_MILLIS = 10000L;
+
+    /**
      * 标准输出分隔符（用于分隔正常输出的文本内容）.
      */
     public static final String STDOUT_LINE_SEPARATOR = "STDOUT-LINE-SEPARATOR";

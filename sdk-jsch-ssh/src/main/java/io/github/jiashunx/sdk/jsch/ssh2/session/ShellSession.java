@@ -123,7 +123,7 @@ public class ShellSession extends AbstractSession {
             if (!this.initialized) {
                 write("pwd").read();
                 ShellResponse shellResponse = write("").read();
-                if (shellResponse.isSuccess()) {
+                if (shellResponse != null && shellResponse.isSuccess()) {
                     this.emptyCmdOutput = shellResponse.getContent();
                     this.replacedCmdOutput = this.emptyCmdOutput;
                     this.defaultCmdOutput = this.emptyCmdOutput;
@@ -131,12 +131,36 @@ public class ShellSession extends AbstractSession {
                         this.replacedCmdOutput = this.emptyCmdOutput.substring(2);
                         this.defaultCmdOutput = this.emptyCmdOutput.substring(4);
                     }
+                    this.initialized = shellResponse.isSuccess();
                 }
-                this.initialized = shellResponse.isSuccess();
             }
         }
         public boolean isInitialized() {
             return initialized;
+        }
+        public String getDefaultCmdOutput() {
+            return this.defaultCmdOutput == null ? "" : this.defaultCmdOutput;
+        }
+        public synchronized ShellResponse execSync(String command) {
+            try {
+                return write(command).readSync();
+            } catch (ConcurrentModificationException concurrentModificationException) {
+                return new ShellResponse().setCommand(command).setErrorObj(concurrentModificationException).setSuccess(false);
+            }
+        }
+        public synchronized ShellResponse exec(String command) {
+            try {
+                return write(command).read();
+            } catch (ConcurrentModificationException concurrentModificationException) {
+                return new ShellResponse().setCommand(command).setErrorObj(concurrentModificationException).setSuccess(false);
+            }
+        }
+        public synchronized ShellResponse exec(String command, long timeoutMillis) {
+            try {
+                return write(command, timeoutMillis).read(timeoutMillis);
+            } catch (ConcurrentModificationException concurrentModificationException) {
+                return new ShellResponse().setCommand(command).setErrorObj(concurrentModificationException).setSuccess(false);
+            }
         }
         private ShellExecutor bgn() {
             new Thread(() ->{
@@ -170,9 +194,12 @@ public class ShellSession extends AbstractSession {
             }
             streamClosed = true;
         }
-        public synchronized ShellExecutor write(String command) {
+        private ShellExecutor write(String command) {
+            return write(command, SSHConst.DEFAULT_SESSION_WAIT_TIMEOUT_MILLIS);
+        }
+        private ShellExecutor write(String command, long waitTimeoutMillis) {
             if (countDownLatch != null && countDownLatch.getCount() > 0L) {
-                throw new ConcurrentModificationException("shell session 已执行命令等待响应中，无法处理当前命令");
+                throw new ConcurrentModificationException(String.format("shell session 已执行命令[%s]等待响应中，无法处理当前命令", prevCommandOfReal));
             }
             countDownLatch = new CountDownLatch(1);
             StringBuilder commandBuilder = new StringBuilder();
@@ -185,7 +212,11 @@ public class ShellSession extends AbstractSession {
             try {
                 outputStream.write(commandBuilder.toString().getBytes(StandardCharsets.UTF_8));
                 outputStream.flush();
-                countDownLatch.await();
+                if (waitTimeoutMillis > 0L) {
+                    countDownLatch.await(waitTimeoutMillis, TimeUnit.MILLISECONDS);
+                } else {
+                    countDownLatch.await();
+                }
             } catch (InterruptedException interruptedException) {
                 logger.error("shell[wait]异常", interruptedException);
             } catch (Throwable throwable) {
@@ -195,14 +226,22 @@ public class ShellSession extends AbstractSession {
             }
             return this;
         }
-        public String getDefaultCmdOutput() {
-            return this.defaultCmdOutput == null ? "" : this.defaultCmdOutput;
+        private ShellResponse readSync() {
+            return read(0L);
         }
-        public synchronized ShellResponse read() {
-            return outputQueue.poll();
+        private ShellResponse read() {
+            return read(SSHConst.DEFAULT_SESSION_WAIT_TIMEOUT_MILLIS);
         }
-        public synchronized ShellResponse read(long timeoutMillis) throws InterruptedException {
-            return outputQueue.poll(timeoutMillis, TimeUnit.MILLISECONDS);
+        private ShellResponse read(long timeoutMillis) {
+            try {
+                if (timeoutMillis > 0L) {
+                    return outputQueue.poll(timeoutMillis, TimeUnit.MILLISECONDS);
+                }
+                return outputQueue.poll();
+            } catch (InterruptedException interruptedException) {
+                logger.error("session[read]获取响应结果异常", interruptedException);
+            }
+            return null;
         }
         private void readOnce() {
             ShellResponse shellResponse = new ShellResponse();
@@ -240,8 +279,6 @@ public class ShellSession extends AbstractSession {
                             }
                             outputQueue.offer(shellResponse.setCommand(prevCommandOfReal).setContent(content).setSuccess(true));
                             shellResponse.setOfferedToQueue(true);
-                            prevCommand = "";
-                            prevCommandOfReal = "";
                             byteArrayOutputStream.reset();
                             countDownLatch.countDown();
                         }
