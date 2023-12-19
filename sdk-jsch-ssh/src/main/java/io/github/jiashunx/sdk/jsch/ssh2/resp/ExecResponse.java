@@ -128,10 +128,21 @@ public class ExecResponse {
     }
 
     public ExecResponse setErrorContent(Throwable throwable) {
-        this.errorObj = new JschException(throwable);
+        return setErrorContent(throwable, false);
+    }
+
+    public ExecResponse setErrorContent(Throwable throwable, boolean append) {
+        if (throwable instanceof JschException) {
+            this.errorObj = (JschException) throwable;
+        } else {
+            this.errorObj = new JschException(throwable);
+        }
         StringWriter stringWriter = new StringWriter();
         try (PrintWriter printWriter = new PrintWriter(stringWriter)) {
             throwable.printStackTrace(printWriter);
+            if (append && getErrorContent() != null) {
+                stringWriter.append("\n------原输出内容------\n").append(getErrorContent());
+            }
             setErrorContent(stringWriter.toString());
         }
         return this;

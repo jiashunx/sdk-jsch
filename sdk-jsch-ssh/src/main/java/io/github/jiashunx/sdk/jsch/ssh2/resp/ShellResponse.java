@@ -2,15 +2,23 @@ package io.github.jiashunx.sdk.jsch.ssh2.resp;
 
 import io.github.jiashunx.sdk.jsch.ssh2.exception.JschException;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
+
 /**
  * @author jiashunx
  */
 public class ShellResponse {
 
     /**
-     * 服务器IP.
+     * 执行命令.
      */
-    private String host;
+    private String command;
+
+    /**
+     * 原始输出日志.
+     */
+    private String content;
 
     /**
      * 异常对象.
@@ -22,27 +30,69 @@ public class ShellResponse {
      */
     private boolean success = true;
 
-    public String getHost() {
-        return host;
+    /**
+     * 已添加到输出队列
+     */
+    private boolean offeredToQueue = false;
+
+    public String getCommand() {
+        return command;
     }
 
-    public void setHost(String host) {
-        this.host = host;
+    public ShellResponse setCommand(String command) {
+        this.command = command;
+        return this;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public ShellResponse setContent(String content) {
+        this.content = content;
+        return this;
     }
 
     public JschException getErrorObj() {
         return errorObj;
     }
 
-    public void setErrorObj(JschException errorObj) {
-        this.errorObj = errorObj;
+    public ShellResponse setErrorObj(Throwable throwable) {
+        return setErrorObj(throwable, false);
+    }
+
+    public ShellResponse setErrorObj(Throwable throwable, boolean append) {
+        if (throwable instanceof JschException) {
+            this.errorObj = (JschException) throwable;
+        } else {
+            this.errorObj = new JschException(throwable);
+        }
+        StringWriter stringWriter = new StringWriter();
+        try (PrintWriter printWriter = new PrintWriter(stringWriter)) {
+            throwable.printStackTrace(printWriter);
+            if (append && getContent() != null) {
+                stringWriter.append("\n------原输出内容------\n").append(getContent());
+            }
+            setContent(stringWriter.toString());
+        }
+        return this;
     }
 
     public boolean isSuccess() {
         return success;
     }
 
-    public void setSuccess(boolean success) {
+    public ShellResponse setSuccess(boolean success) {
         this.success = success;
+        return this;
+    }
+
+    public boolean isOfferedToQueue() {
+        return offeredToQueue;
+    }
+
+    public ShellResponse setOfferedToQueue(boolean offeredToQueue) {
+        this.offeredToQueue = offeredToQueue;
+        return this;
     }
 }
